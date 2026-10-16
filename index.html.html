@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- ===== SEO / Open Graph（TODO: 將 [待填] 換成實際內容） ===== -->
+  <title>王語涵｜AI 應用與系統開發實習生</title>
+  <meta name="description" content="醫學資訊 × AI 應用。我把使用者需求轉化為真正可用的系統：語音逐字稿 AI 校正、LLM 選型評測、LINE BOT 流程自動化、雲端 AI 應用建置。" />
+  <meta name="author" content="王語涵" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="王語涵｜讓 AI 與數據，成為每個人的超能力" />
+  <meta property="og:description" content="醫學資訊 × AI 應用｜把需求，變成真正能用的系統" />
+  <meta property="og:url" content="[待填：網站網址]" />
+  <meta property="og:image" content="[待填：分享縮圖網址，建議 1200×630]" />
+  <meta property="og:locale" content="zh_TW" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#ffffff" />
+
+  <!-- ===== 字體 ===== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- ===== Tailwind CSS（CDN）＋ 品牌色設定 ===== -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              blue: '#2563eb',    // 主色 科技藍
+              purple: '#7c3aed',  // 輔色 高級紫
+              mint: '#10b981',    // 點綴 薄荷綠
+              mist: '#f8fafc',    // 霧面灰
+              ink: '#0f172a',     // 標題文字
+              body: '#475569'     // 內文文字
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', '"Noto Sans TC"', 'system-ui', 'sans-serif'],
+            display: ['"Space Grotesk"', 'Inter', '"Noto Sans TC"', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- ===== Chart.js（CDN） ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+
+  <style>
+    /* ===== CSS 變數（改顏色請改這裡，並同步 tailwind.config） ===== */
+    :root {
+      --blue: #2563eb;
+      --purple: #7c3aed;
+      --mint: #10b981;
+      --white: #ffffff;
+      --mist: #f8fafc;
+      --ink: #0f172a;
+      --body: #475569;
+      --muted: #64748b;
+      --glass-bg: rgba(255, 255, 255, 0.65);
+      --glass-border: rgba(255, 255, 255, 0.85);
+      --shadow-soft: 0 10px 40px -14px rgba(37, 99, 235, 0.18);
+      --grad-main: linear-gradient(120deg, var(--blue), var(--purple));
+      --ease: cubic-bezier(.22, .61, .36, 1);
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Noto Sans TC', system-ui, sans-serif;
+      color: var(--body);
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 35%, #f1f6ff 70%, #ffffff 100%);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, h4 { color: var(--ink); font-family: 'Noto Sans TC', 'Inter', sans-serif; }
+    .num { font-family: 'Space Grotesk', 'Inter', sans-serif; font-variant-numeric: tabular-nums; }
+    section { scroll-margin-top: 80px; }
+
+    /* 鍵盤焦點 */
+    :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 8px; }
+    .skip-link { position: absolute; left: 1rem; top: -100px; z-index: 100; background: #fff; padding: .6rem 1rem; border-radius: .75rem; box-shadow: var(--shadow-soft); color: var(--blue); font-weight: 600; }
+    .skip-link:focus { top: 1rem; }
+
+    /* ===== 背景特效 ===== */
+    .bg-layer { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    #bg-canvas { width: 100%; height: 100%; display: block; opacity: .55; }
+    .ai-grid {
+      background-image:
+        linear-gradient(rgba(37, 99, 235, .055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37, 99, 235, .055) 1px, transparent 1px);
+      background-size: 56px 56px;
+      -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 80%);
+              mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 20%, transparent 80%);
+    }
+    .glow { position: absolute; border-radius: 9999px; filter: blur(90px); opacity: .28; will-change: transform; }
+    .glow-1 { width: 460px; height: 460px; background: #93c5fd; top: -120px; left: -100px; animation: drift1 26s ease-in-out infinite alternate; }
+    .glow-2 { width: 420px; height: 420px; background: #c4b5fd; top: 30%; right: -140px; animation: drift2 32s ease-in-out infinite alternate; }
+    .glow-3 { width: 360px; height: 360px; background: #a7f3d0; bottom: -120px; left: 30%; opacity: .18; animation: drift3 28s ease-in-out infinite alternate; }
+    @keyframes drift1 { to { transform: translate(120px, 80px) scale(1.1); } }
+    @keyframes drift2 { to { transform: translate(-100px, 120px) scale(.95); } }
+    @keyframes drift3 { to { transform: translate(-80px, -90px) scale(1.08); } }
+    .dataflow { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .5; }
+
+    /* ===== 玻璃卡片 ===== */
+    .glass {
+      background: var(--glass-bg);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+              backdrop-filter: blur(16px) saturate(140%);
+      border: 1px solid var(--glass-border);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), var(--shadow-soft);
+    }
+    .card-hover { position: relative; transition: transform .35s var(--ease), box-shadow .35s var(--ease); }
+    .card-hover::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+      background: linear-gradient(135deg, rgba(37, 99, 235, .65), rgba(124, 58, 237, .6), rgba(16, 185, 129, .45));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      opacity: 0; transition: opacity .35s var(--ease);
+    }
+    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 22px 50px -18px rgba(37, 99, 235, .38), 0 0 0 6px rgba(37, 99, 235, .04); }
+    .card-hover:hover::before { opacity: 1; }
+
+    /* ===== 區塊標籤 ===== */
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: .5rem;
+      font-family: 'Space Grotesk', sans-serif; font-size: .75rem; font-weight: 600; letter-spacing: .22em;
+      color: var(--blue); text-transform: uppercase;
+    }
+    .eyebrow::before { content: ''; width: 22px; height: 1.5px; background: var(--grad-main); }
+    .grad-text { background: var(--grad-main); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+    /* ===== 按鈕規格 ===== */
+    .btn {
+      position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+      padding: .8rem 1.6rem; border-radius: 9999px; font-weight: 600; font-size: .95rem; line-height: 1.2;
+      color: #1d4ed8; white-space: nowrap; cursor: pointer;
+      border: 1.5px solid transparent;
+      background:
+        linear-gradient(rgba(255, 255, 255, .82), rgba(255, 255, 255, .82)) padding-box,
+        linear-gradient(120deg, var(--blue), var(--purple)) border-box;
+      -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+      box-shadow: 0 6px 20px -10px rgba(37, 99, 235, .45);
+      transition: color .3s ease-out, box-shadow .3s ease-out, transform .3s ease-out, background .3s ease-out;
+    }
+    .btn:hover, .btn:focus-visible {
+      color: #047857; transform: translateY(-1px);
+      background:
+        linear-gradient(rgba(255, 255, 255, .95), rgba(255, 255, 255, .95)) padding-box,
+        linear-gradient(120deg, #10b981, #34d399) border-box;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, .12), 0 12px 32px -10px rgba(16, 185, 129, .6);
+    }
+    .btn-sm { padding: .55rem 1.1rem; font-size: .85rem; }
+    .btn-xl { padding: 1.15rem 2.4rem; font-size: 1.15rem; }
+    /* 文字切換：兩個標籤疊在同一格，寬度取較寬者，切換時不跳動 */
+    .btn-swap { display: inline-grid; }
+    .btn-swap > span { grid-area: 1 / 1; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; transition: opacity .3s ease-out, transform .3s ease-out; }
+    .btn-swap .label-hover { opacity: 0; transform: translateY(8px); }
+    .btn:hover .btn-swap .label-default, .btn:focus-visible .btn-swap .label-default { opacity: 0; transform: translateY(-8px); }
+    .btn:hover .btn-swap .label-hover, .btn:focus-visible .btn-swap .label-hover { opacity: 1; transform: translateY(0); }
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); animation: pulse 1.6s ease-out infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, .6); } 100% { box-shadow: 0 0 0 9px rgba(16, 185, 129, 0); } }
+
+    /* ===== 打字機 ===== */
+    .type-cursor { display: inline-block; width: 3px; height: .95em; margin-left: 4px; vertical-align: -0.08em; background: var(--grad-main); border-radius: 2px; animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .hero-after { opacity: 0; transform: translateY(12px); transition: opacity .9s var(--ease), transform .9s var(--ease); }
+    .hero-after.show { opacity: 1; transform: none; }
+
+    /* ===== 向下滾動提示 ===== */
+    .scroll-hint { position: relative; width: 1px; height: 56px; background: linear-gradient(rgba(37, 99, 235, .05), rgba(37, 99, 235, .45)); }
+    .scroll-hint::after { content: ''; position: absolute; left: 50%; top: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--blue); transform: translateX(-50%); box-shadow: 0 0 10px rgba(37, 99, 235, .6); animation: hintMove 2.6s ease-in-out infinite; }
+    @keyframes hintMove { 0% { top: 0; opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { top: 50px; opacity: 0; } }
+
+    /* ===== 進場動畫 ===== */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .8s var(--ease), transform .8s var(--ease); transition-delay: var(--d, 0ms); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    /* ===== 技能 chips ===== */
+    .chip {
+      display: inline-flex; align-items: center; padding: .4rem .85rem; border-radius: 9999px; font-size: .85rem; color: #334155;
+      border: 1px solid transparent;
+      background:
+        linear-gradient(rgba(255, 255, 255, .85), rgba(255, 255, 255, .85)) padding-box,
+        linear-gradient(120deg, #e2e8f0, #e2e8f0) border-box;
+      transition: background .3s ease-out, color .3s ease-out, box-shadow .3s ease-out, transform .3s ease-out;
+    }
+    .chip:hover {
+      color: #1e40af; transform: translateY(-1px);
+      background:
+        linear-gradient(rgba(255, 255, 255, .95), rgba(255, 255, 255, .95)) padding-box,
+        linear-gradient(120deg, var(--blue), var(--purple), var(--mint)) border-box;
+      box-shadow: 0 6px 18px -8px rgba(37, 99, 235, .45);
+    }
+    .tag { display: inline-flex; padding: .25rem .65rem; border-radius: 9999px; font-size: .75rem; font-weight: 500; color: #1d4ed8; background: rgba(37, 99, 235, .07); border: 1px solid rgba(37, 99, 235, .12); }
+
+    /* ===== 圖片佔位 ===== */
+    .placeholder {
+      position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #dbeafe 0%, #ede9fe 55%, #d1fae5 100%);
+    }
+    .placeholder::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px); background-size: 28px 28px; }
+    .placeholder > * { position: relative; z-index: 1; }
+
+    /* ===== 系統流程圖 ===== */
+    .flow { display: flex; flex-direction: column; align-items: stretch; }
+    .flow-node { position: relative; border-radius: 1rem; padding: .9rem 1rem; text-align: center; background: rgba(255,255,255,.8); border: 1px solid rgba(37,99,235,.15); box-shadow: 0 8px 24px -14px rgba(37,99,235,.35); }
+    .flow-node .step { font-family: 'Space Grotesk', sans-serif; font-size: .7rem; letter-spacing: .12em; color: var(--purple); font-weight: 600; }
+    .flow-link { position: relative; width: 2px; height: 34px; margin: 0 auto; background: linear-gradient(#bfdbfe, #ddd6fe); overflow: hidden; border-radius: 2px; }
+    .flow-link::after { content: ''; position: absolute; left: 50%; top: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 10px #60a5fa; transform: translate(-50%, -100%); animation: flowY 2.4s linear infinite; }
+    @keyframes flowY { 0% { top: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+    @media (min-width: 1024px) {
+      .flow { flex-direction: row; align-items: center; }
+      .flow-node { flex: 1 1 0; min-width: 0; }
+      .flow-link { width: auto; flex: 0 0 34px; height: 2px; margin: 0; background: linear-gradient(90deg, #bfdbfe, #ddd6fe); }
+      .flow-link::after { top: 50%; left: 0; transform: translate(-100%, -50%); animation-name: flowX; }
+      @keyframes flowX { 0% { left: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+    }
+
+    /* ===== 圖表切換 ===== */
+    .seg { display: inline-flex; padding: 4px; border-radius: 9999px; background: rgba(241, 245, 249, .9); border: 1px solid #e2e8f0; }
+    .seg button { padding: .45rem 1rem; border-radius: 9999px; font-size: .85rem; font-weight: 600; color: var(--muted); transition: all .3s ease-out; }
+    .seg button[aria-pressed="true"] { background: #fff; color: var(--blue); box-shadow: 0 4px 14px -6px rgba(37, 99, 235, .45); }
+    .seg button[data-mode="hallu"][aria-pressed="true"] { color: #e11d48; }
+
+    /* ===== 導覽列 ===== */
+    #site-header { transition: background .35s ease-out, box-shadow .35s ease-out, border-color .35s ease-out; border-bottom: 1px solid transparent; }
+    #site-header.scrolled { background: rgba(255, 255, 255, .72); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 6px 24px -16px rgba(15, 23, 42, .25); border-color: rgba(226, 232, 240, .7); }
+
+    /* ===== 右側圓點導覽 ===== */
+    .dot-nav a { position: relative; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; }
+    .dot-nav a .dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; transition: all .3s ease-out; }
+    .dot-nav a:hover .dot { background: var(--blue); }
+    .dot-nav a.active .dot { width: 10px; height: 10px; background: var(--grad-main); box-shadow: 0 0 0 4px rgba(37, 99, 235, .14); }
+    .dot-nav a .dot-label { position: absolute; right: 30px; white-space: nowrap; font-size: .78rem; font-weight: 500; color: var(--ink); padding: .3rem .65rem; border-radius: .5rem; background: rgba(255,255,255,.9); box-shadow: var(--shadow-soft); opacity: 0; transform: translateX(6px); transition: all .25s ease-out; pointer-events: none; }
+    .dot-nav a:hover .dot-label, .dot-nav a:focus-visible .dot-label { opacity: 1; transform: none; }
+
+    /* ===== 回到頂部 ===== */
+    #to-top { opacity: 0; transform: translateY(12px); pointer-events: none; transition: all .35s ease-out; }
+    #to-top.show { opacity: 1; transform: none; pointer-events: auto; }
+
+    /* ===== 減少動態 ===== */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
+      .reveal, .hero-after { opacity: 1 !important; transform: none !important; }
+      #bg-canvas, .dataflow { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <a href="#main" class="skip-link">跳至主要內容</a>
+
+  <!-- ===== 背景特效層（粒子 / 網格 / 光暈 / 資料流） ===== -->
+  <div class="bg-layer" aria-hidden="true">
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+    <div class="glow glow-3"></div>
+    <div class="bg-layer ai-grid"></div>
+    <svg class="dataflow" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#2563eb" stop-opacity="0" />
+          <stop offset="50%" stop-color="#2563eb" stop-opacity=".22" />
+          <stop offset="100%" stop-color="#7c3aed" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <path id="df1" d="M-50 720 L520 -40" stroke="url(#lineGrad)" stroke-width="1" fill="none" />
+      <path id="df2" d="M380 960 L1080 -60" stroke="url(#lineGrad)" stroke-width="1" fill="none" />
+      <path id="df3" d="M900 980 L1500 160" stroke="url(#lineGrad)" stroke-width="1" fill="none" />
+      <circle r="2.5" fill="#2563eb" opacity=".55"><animateMotion dur="14s" repeatCount="indefinite"><mpath href="#df1" /></animateMotion></circle>
+      <circle r="2.5" fill="#7c3aed" opacity=".5"><animateMotion dur="18s" begin="-6s" repeatCount="indefinite"><mpath href="#df2" /></animateMotion></circle>
+      <circle r="2" fill="#10b981" opacity=".5"><animateMotion dur="16s" begin="-3s" repeatCount="indefinite"><mpath href="#df3" /></animateMotion></circle>
+    </svg>
+    <canvas id="bg-canvas"></canvas>
+  </div>
+
+  <!-- ===== 頂部導覽列 ===== -->
+  <header id="site-header" class="fixed top-0 inset-x-0 z-50">
+    <nav class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between" aria-label="主要導覽">
+      <a href="#hero" class="flex items-center gap-2.5 font-semibold text-brand-ink">
+        <span class="glass inline-flex items-center h-8 px-3 rounded-xl text-sm font-display font-semibold tracking-wider" aria-hidden="true"><span class="grad-text">sunny</span></span>
+        <!-- TODO: 換成你的名字 -->
+        <span class="text-[15px]">王語涵</span>
+      </a>
+      <div class="flex items-center gap-2 sm:gap-4">
+        <a href="https://linebotai-eight.vercel.app" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-slate-600 hover:text-brand-blue transition-colors">
+          <span class="hidden sm:inline">LINE BOT Demo ↗</span><span class="sm:hidden">Demo ↗</span>
+        </a>
+        <a href="https://calendar.app.google/fvBJw33fKPCAU9oE9" target="_blank" rel="noopener noreferrer" class="btn btn-sm">
+          <span class="btn-swap">
+            <span class="label-default">預約諮詢</span>
+            <span class="label-hover"><i class="pulse-dot"></i>Status: Ready to Connect</span>
+          </span>
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ===== 右側圓點導覽（桌機） ===== -->
+  <nav class="dot-nav hidden lg:flex fixed right-6 top-1/2 -translate-y-1/2 z-40 flex-col gap-2" aria-label="頁內區塊導覽">
+    <a href="#hero" data-target="hero" aria-label="首頁"><span class="dot"></span><span class="dot-label">首頁</span></a>
+    <a href="#about" data-target="about" aria-label="關於我"><span class="dot"></span><span class="dot-label">關於我</span></a>
+    <a href="#services" data-target="services" aria-label="AI 解決方案"><span class="dot"></span><span class="dot-label">AI 解決方案</span></a>
+    <a href="#works" data-target="works" aria-label="作品集"><span class="dot"></span><span class="dot-label">作品集</span></a>
+    <a href="#blog" data-target="blog" aria-label="技術部落格"><span class="dot"></span><span class="dot-label">技術部落格</span></a>
+    <a href="#contact" data-target="contact" aria-label="聯絡我"><span class="dot"></span><span class="dot-label">聯絡我</span></a>
+  </nav>
+
+  <main id="main" class="relative z-10">
+
+    <!-- ===== Hero 首頁 ===== -->
+    <section id="hero" class="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 pt-24 pb-10 text-center">
+      <div class="max-w-4xl mx-auto w-full">
+        <!-- TODO: 換成你的名字 -->
+        <p class="hero-after inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 text-sm text-slate-600 mb-8">
+          <span class="w-1.5 h-1.5 rounded-full bg-brand-mint"></span>
+          王語涵｜AI 應用與系統開發實習生
+        </p>
+
+        <h1 class="text-[2rem] leading-[1.3] sm:text-5xl lg:text-6xl font-black tracking-tight min-h-[5.2rem] sm:min-h-[8rem] lg:min-h-[9.5rem]" aria-label="讓 AI 與數據，成為每個人的超能力。">
+          <span id="typed" aria-hidden="true"></span><span class="type-cursor" aria-hidden="true"></span>
+        </h1>
+
+        <p class="hero-after mt-6 text-base sm:text-lg text-slate-600">
+          <span class="grad-text font-semibold">醫學資訊 × AI 應用</span><span class="mx-2 text-slate-300">｜</span>把需求，變成真正能用的系統
+        </p>
+
+        <div class="hero-after mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+          <a href="#works" class="btn w-full sm:w-auto">看我的作品</a>
+          <a href="https://calendar.app.google/fvBJw33fKPCAU9oE9" target="_blank" rel="noopener noreferrer" class="btn w-full sm:w-auto">
+            <span class="btn-swap">
+              <span class="label-default">預約諮詢 ↗</span>
+              <span class="label-hover"><i class="pulse-dot"></i>Status: Ready to Connect</span>
+            </span>
+          </a>
+        </div>
+
+        <!-- 三個關鍵數字 -->
+        <ul class="hero-after mt-14 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto">
+          <li class="glass rounded-2xl px-5 py-5">
+            <p class="num text-4xl font-bold text-brand-ink"><span class="counter" data-target="3">0</span></p>
+            <p class="mt-1 text-sm text-slate-500">個 AI 專案實作</p>
+          </li>
+          <li class="glass rounded-2xl px-5 py-5">
+            <p class="num text-4xl font-bold text-brand-ink"><span class="counter" data-target="10">0</span></p>
+            <p class="mt-1 text-sm text-slate-500">個 LLM 實測評估</p>
+          </li>
+          <li class="glass rounded-2xl px-5 py-5">
+            <p class="num text-4xl font-bold text-brand-ink"><span class="counter" data-target="90">0</span></p>
+            <p class="mt-1 text-sm text-slate-500">次推論，<span class="text-brand-mint font-semibold"><span class="counter" data-target="100">0</span>%</span> 成功回傳</p>
+          </li>
+        </ul>
+      </div>
+
+      <a href="#about" class="hero-after mt-14 flex flex-col items-center gap-3 text-xs tracking-[.25em] text-slate-400 font-display" aria-label="向下滾動至關於我">
+        SCROLL
+        <span class="scroll-hint" aria-hidden="true"></span>
+      </a>
+    </section>
+
+    <!-- ===== 關於我 ===== -->
+    <section id="about" class="py-24 sm:py-32 px-4 sm:px-6">
+      <div class="max-w-6xl mx-auto">
+        <div class="reveal mb-14">
+          <span class="eyebrow">About</span>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">關於我</h2>
+        </div>
+
+        <div class="grid lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+          <!-- 個人照片：
+               TODO: 換照片時，把下方 <div class="placeholder ..."> 整段換成
+               <img src="你的照片路徑.jpg" alt="[你的名字] 的個人照片" class="w-full h-full object-cover rounded-[1.4rem]" /> -->
+          <div class="reveal lg:col-span-5">
+            <div class="glass rounded-[2rem] p-3 max-w-sm mx-auto lg:max-w-none">
+              <img src="photo.jpg" alt="[你的名字] 的個人照片" class="w-full h-full object-cover rounded-[1.4rem]" /> 
+            </div>
+          </div>
+
+          <!-- 我是誰／我服務誰／為什麼選我 -->
+          <div class="lg:col-span-7 space-y-5">
+            <article class="reveal glass card-hover rounded-2xl p-6 flex gap-4">
+              <div class="shrink-0 w-11 h-11 rounded-xl grid place-items-center bg-blue-50 text-brand-blue" aria-hidden="true">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-6 7-6s6.2 2.4 7 6"/></svg>
+              </div>
+              <div>
+                <h3 class="text-lg font-bold">我是誰</h3>
+                <p class="mt-2 leading-relaxed">具醫學資訊與創新應用背景的資訊實習生，參與 AI 應用、系統分析、需求整理與網站開發專案。我不只關注技術怎麼實作，更重視把使用者需求轉化為真正可用的系統功能。</p>
+              </div>
+            </article>
+            <article class="reveal glass card-hover rounded-2xl p-6 flex gap-4">
+              <div class="shrink-0 w-11 h-11 rounded-xl grid place-items-center bg-violet-50 text-brand-purple" aria-hidden="true">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg>
+              </div>
+              <div>
+                <h3 class="text-lg font-bold">我服務誰</h3>
+                <p class="mt-2 leading-relaxed">有數位轉型需求的企業與組織。我協助把散落在群組、錄音與表單裡的資訊整理成系統，改善工作流程、提升資訊處理效率。</p>
+              </div>
+            </article>
+            <article class="reveal glass card-hover rounded-2xl p-6 flex gap-4">
+              <div class="shrink-0 w-11 h-11 rounded-xl grid place-items-center bg-emerald-50 text-brand-mint" aria-hidden="true">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>
+              </div>
+              <div>
+                <h3 class="text-lg font-bold">為什麼選我</h3>
+                <p class="mt-2 leading-relaxed">跨領域學習力，能參與「需求理解 → 流程整理 → 架構規劃 → 實際開發」的完整流程。面對陌生技術，我會主動研究、拆解問題並找出解法。</p>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <!-- 技能區 -->
+        <div class="reveal glass rounded-3xl p-6 sm:p-8 mt-12">
+          <h3 class="text-lg font-bold mb-6">技能 <span class="font-display text-sm font-medium text-slate-400 ml-2 tracking-widest">SKILLS</span></h3>
+          <dl class="space-y-5">
+            <div class="grid sm:grid-cols-[140px_1fr] gap-2 sm:gap-4 items-start">
+              <dt class="text-sm font-semibold text-brand-ink pt-1.5">AI 應用</dt>
+              <dd class="flex flex-wrap gap-2">
+                <span class="chip">LLM 應用設計</span><span class="chip">語音辨識（ASR）</span><span class="chip">文字校正</span><span class="chip">圖片辨識</span><span class="chip">LLM 模型評測</span>
+              </dd>
+            </div>
+            <div class="grid sm:grid-cols-[140px_1fr] gap-2 sm:gap-4 items-start">
+              <dt class="text-sm font-semibold text-brand-ink pt-1.5">前端與部署</dt>
+              <dd class="flex flex-wrap gap-2"><span class="chip">React</span><span class="chip">Vercel</span><span class="chip">GitHub</span></dd>
+            </div>
+            <div class="grid sm:grid-cols-[140px_1fr] gap-2 sm:gap-4 items-start">
+              <dt class="text-sm font-semibold text-brand-ink pt-1.5">雲端平台</dt>
+              <dd class="flex flex-wrap gap-2"><span class="chip">Microsoft Foundry</span><span class="chip">Fabric</span><span class="chip">Copilot Studio</span></dd>
+            </div>
+            <div class="grid sm:grid-cols-[140px_1fr] gap-2 sm:gap-4 items-start">
+              <dt class="text-sm font-semibold text-brand-ink pt-1.5">聊天機器人</dt>
+              <dd class="flex flex-wrap gap-2"><span class="chip">LINE BOT 設計</span><span class="chip">Google 試算表與 Gmail 串接</span></dd>
+            </div>
+            <div class="grid sm:grid-cols-[140px_1fr] gap-2 sm:gap-4 items-start">
+              <dt class="text-sm font-semibold text-brand-ink pt-1.5">文件與提案</dt>
+              <dd class="flex flex-wrap gap-2"><span class="chip">競賽提案</span><span class="chip">產品功能文件</span><span class="chip">技術成果報告</span></dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== AI 解決方案服務 ===== -->
+    <section id="services" class="py-24 sm:py-32 px-4 sm:px-6">
+      <div class="max-w-6xl mx-auto">
+        <div class="reveal mb-14 max-w-2xl">
+          <span class="eyebrow">Services</span>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">AI 解決方案</h2>
+          <p class="mt-4 leading-relaxed">每一項服務，都來自我實際做過的專案。</p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          <article class="reveal glass card-hover rounded-3xl p-7 flex flex-col">
+            <div class="w-12 h-12 rounded-2xl grid place-items-center text-white mb-6" style="background:var(--grad-main)" aria-hidden="true">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            </div>
+            <h3 class="text-lg font-bold">語音逐字稿 AI 校正</h3>
+            <p class="mt-3 text-sm leading-relaxed">ASR 初稿 + LLM 校正，把會議、導覽、訪談錄音轉成可搜尋的文字紀錄。</p>
+            <ul class="mt-5 space-y-2 text-sm">
+              <li class="flex gap-2"><span class="text-brand-mint">✓</span>修正錯字、標點、斷句與專有名詞</li>
+              <li class="flex gap-2"><span class="text-brand-mint">✓</span>可加入領域關鍵字與在地資料</li>
+              <li class="flex gap-2"><span class="text-brand-mint">✓</span>保留人工複核流程</li>
+            </ul>
+          </article>
+
+          <article class="reveal glass card-hover rounded-3xl p-7 flex flex-col">
+            <div class="w-12 h-12 rounded-2xl grid place-items-center text-white mb-6" style="background:var(--grad-main)" aria-hidden="true">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+            </div>
+            <h3 class="text-lg font-bold">LLM 選型與評測</h3>
+            <p class="mt-3 text-sm leading-relaxed">用真實場域資料比較多個模型的正確率與幻覺風險，找出最適合的模型。</p>
+            <ul class="mt-5 space-y-2 text-sm">
+              <li class="flex gap-2"><span class="text-brand-mint">✓</span>以人工標註建立評估基準</li>
+              <li class="flex gap-2"><span class="text-brand-mint">✓</span>同時量化命中率與幻覺次數</li>
+              <li class="flex gap-2"><span class="text-brand-mint">✓</span>產出可讀的比較報告</li>
+            </ul>
+          </article>
+
+          <article class="reveal glass card-hover rounded-3xl p-7 flex flex-col">
+            <div class="w-12 h-12 rounded-2xl grid place-items-center text-white mb-6" style="background:var(--grad-main)" aria-hidden="true">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 12h7M8.5 9h4"/></svg>
+            </div>
+            <h3 class="text-lg font-bold">LINE BOT 流程自動化</h3>
+            <p class="mt-3 text-sm leading-relaxed">從群組訊息自動蒐集任務，串接 Google 試算表、Gmail、行事曆。</p>
+            <ul class="mt-5 space-y-2 text-sm">
+              <li class="flex gap-2"><span class="text-brand-mint">✓</span>跨群組任務蒐集與 AI 解析</li>
+              <li class="flex gap-2"><span class="text-brand-mint">✓</span>依需求客製串接既有工具</li>
+            </ul>
+          </article>
+
+          <article class="reveal glass card-hover rounded-3xl p-7 flex flex-col">
+            <div class="w-12 h-12 rounded-2xl grid place-items-center text-white mb-6" style="background:var(--grad-main)" aria-hidden="true">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 8.5a4.75 4.75 0 0 1-.5 9.5H7z"/></svg>
+            </div>
+            <h3 class="text-lg font-bold">雲端 AI 應用建置</h3>
+            <p class="mt-3 text-sm leading-relaxed">以 Microsoft Foundry、Fabric、Copilot Studio 快速建立 AI 應用原型。</p>
+            <ul class="mt-5 space-y-2 text-sm">
+              <li class="flex gap-2"><span class="text-brand-mint">✓</span>從需求整理到架構規劃</li>
+              <li class="flex gap-2"><span class="text-brand-mint">✓</span>快速驗證想法是否可行</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 作品集 ===== -->
+    <section id="works" class="py-24 sm:py-32 px-4 sm:px-6">
+      <div class="max-w-6xl mx-auto">
+        <div class="reveal mb-14 max-w-2xl">
+          <span class="eyebrow">Works</span>
+          <h2 class="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">作品集</h2>
+          <p class="mt-4 leading-relaxed">從需求到上線，每個作品都寫清楚我負責的部分。</p>
+        </div>
+
+        <div class="space-y-8">
+
+          <!-- ===== 作品一：任務蒐集助理機器人（LINE BOT）展示網站 ===== -->
+          <article class="reveal glass card-hover rounded-[2rem] p-4 sm:p-6 grid lg:grid-cols-12 gap-6 lg:gap-10 items-center">
+            <!-- TODO: 換圖時，將下方 placeholder 換成
+                 <img src="linebot-cover.jpg" alt="任務蒐集助理機器人展示網站截圖" class="w-full h-full object-cover rounded-[1.4rem]" /> -->
+            <div class="lg:col-span-5 aspect-[16/10] overflow-hidden rounded-[1.4rem]">
+              <img src="line.png" alt="任務蒐集助理機器人展示網站截圖" class="w-full h-full object-cover object-top" />
+            </div>
+            <div class="lg:col-span-7 px-1 sm:px-0 pb-2">
+              <span class="tag">工作專案｜誠士資訊（SUROS）產品</span>
+              <h3 class="mt-4 text-2xl font-bold leading-snug">任務蒐集助理機器人（LINE BOT）展示網站</h3>
+              <p class="mt-3 leading-relaxed">從 LINE 群組自動蒐集任務的機器人，以 AI 解析訊息與圖片，整理成可管理的任務清單。我用 React 打造產品展示網站，部署於 Vercel。</p>
+              <p class="mt-3 text-sm leading-relaxed"><span class="font-semibold text-brand-ink">主要功能：</span>跨群組任務蒐集、AI 任務解析、圖片識別、任務管理、管理員權限；可客製串接行事曆、Google 試算表、Email。</p>
+              <p class="mt-3 text-sm"><span class="font-semibold text-brand-ink">我的角色：</span>前端開發與部署、功能文件整理</p>
+              <div class="mt-5 flex flex-wrap gap-2">
+                <span class="tag">React</span><span class="tag">Vercel</span><span class="tag">LINE Messaging API</span><span class="tag">LLM</span>
+              </div>
+              <a href="https://linebotai-eight.vercel.app" target="_blank" rel="noopener noreferrer" class="btn mt-7">查看線上展示 ↗</a>
+            </div>
+          </article>
+
+          <!-- ===== 作品二（★ 精選案例）：語音逐字稿 AI 校正——十大 LLM 實測評估 ===== -->
+          <article class="reveal glass rounded-[2rem] p-5 sm:p-8 lg:p-10 relative overflow-hidden">
+            <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full opacity-30 blur-3xl pointer-events-none" style="background:radial-gradient(#c4b5fd,transparent 70%)" aria-hidden="true"></div>
+
+            <div class="relative">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold text-white" style="background:var(--grad-main)">★ 精選案例</span>
+                <span class="tag">數位發展部數位產業署「算力平台」計畫｜場域應用類</span>
+                <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100">已完成</span>
+              </div>
+              <h3 class="mt-5 text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight tracking-tight">語音逐字稿 AI 校正<span class="text-slate-300 mx-2">——</span><span class="grad-text">十大 LLM 實測評估</span></h3>
+              <p class="mt-5 leading-relaxed max-w-4xl">以 Breeze-ASR-25 產生逐字稿初稿，再呼叫算力平台推論 API，由 LLM 修正錯字、標點、斷句與專有名詞。以獅山古道實地導覽錄音（9 段、約 16 分鐘，含戶外環境音、多人插話、客語與英文）實測 10 個模型。</p>
+              <div class="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm">
+                <p><span class="font-semibold text-brand-ink">我的角色：</span>原型設計、模型評估、成果報告撰寫</p>
+              </div>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <span class="tag">Breeze-ASR-25</span><span class="tag">10 個 LLM</span><span class="tag">Google Colab</span><span class="tag">Wikipedia API</span><span class="tag">Prompt Engineering</span>
+              </div>
+
+              <!-- 成果亮點：數字卡片 -->
+              <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="rounded-2xl bg-white/80 border border-blue-100 p-5">
+                  <p class="num text-3xl font-bold text-brand-ink"><span class="counter" data-target="90">0</span><span class="text-base text-slate-400 font-medium ml-1">次推論</span></p>
+                  <p class="mt-2 text-sm leading-relaxed">10 個模型全數成功回傳<br><span class="text-slate-400 text-xs">含逾時、自動重試、截斷偵測機制</span></p>
+                </div>
+                <div class="rounded-2xl bg-white/80 border border-blue-100 p-5">
+                  <p class="num text-3xl font-bold text-brand-ink"><span class="counter" data-target="40">0</span><span class="text-base text-slate-400 font-medium ml-1">處</span></p>
+                  <p class="mt-2 text-sm leading-relaxed">人工標註校正點<br><span class="text-slate-400 text-xs">作為評估基準</span></p>
+                </div>
+                <div class="rounded-2xl bg-white/80 border border-violet-100 p-5">
+                  <p class="num text-3xl font-bold grad-text"><span class="counter" data-target="52.5" data-decimals="1">0</span>%</p>
+                  <p class="mt-2 text-sm leading-relaxed">最高修正命中率<br><span class="text-slate-400 text-xs">Google Gemma-3-27B</span></p>
+                </div>
+                <div class="rounded-2xl bg-white/80 border border-emerald-100 p-5">
+                  <p class="num text-3xl font-bold text-brand-mint"><span class="counter" data-target="2">0</span><span class="text-base text-slate-400 font-medium ml-1">次</span></p>
+                  <p class="mt-2 text-sm leading-relaxed">最低幻覺次數<br><span class="text-slate-400 text-xs">Llama-3.1-405B、Llama-3.3-70B</span></p>
+                </div>
+              </div>
+
+              <!-- 關鍵洞察 -->
+              <blockquote class="mt-8 relative rounded-2xl p-6 sm:p-7 bg-gradient-to-r from-blue-50/80 to-violet-50/80 border-l-4" style="border-image:var(--grad-main) 1">
+                <p class="font-display text-xs tracking-[.2em] text-brand-purple font-semibold mb-2">KEY INSIGHT</p>
+                <p class="text-base sm:text-lg leading-relaxed text-brand-ink">模型規模與修正命中率呈中度正相關（Spearman <span class="num">ρ ≈ 0.52</span>），但與幻覺幾乎無關（<span class="num">ρ ≈ 0.10</span>）。<strong>幻覺風險主要取決於模型系列的行為傾向，而非參數大小。</strong></p>
+              </blockquote>
+
+              <!-- 互動圖表 -->
+              <div class="mt-8 rounded-2xl bg-white/85 border border-slate-100 p-4 sm:p-6" id="chart-wrap">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                  <div>
+                    <h4 class="font-bold text-brand-ink">10 個 LLM 校正表現</h4>
+                    <p class="text-xs text-slate-500 mt-1" id="chart-caption">修正命中數（以 40 處人工標註為分母，依命中數排序）</p>
+                  </div>
+                  <div class="seg" role="group" aria-label="切換圖表檢視">
+                    <button type="button" data-mode="hits" aria-pressed="true">修正命中數</button>
+                    <button type="button" data-mode="hallu" aria-pressed="false">幻覺次數</button>
+                  </div>
+                </div>
+                <div class="relative h-[420px] sm:h-[400px]">
+                  <canvas id="llm-chart" role="img" aria-label="10 個 LLM 的修正命中數與幻覺次數橫向長條圖"></canvas>
+                </div>
+                <!-- 無障礙：圖表資料表（螢幕閱讀器可讀） -->
+                <table class="sr-only">
+                  <caption>10 個 LLM 實測結果</caption>
+                  <thead><tr><th>模型</th><th>規模</th><th>修正命中</th><th>命中率</th><th>幻覺</th></tr></thead>
+                  <tbody>
+                    <tr><td>Gemma-3-27B</td><td>27B</td><td>21</td><td>52.5%</td><td>6</td></tr>
+                    <tr><td>Llama-3.1-405B</td><td>405B</td><td>15</td><td>37.5%</td><td>2</td></tr>
+                    <tr><td>Mistral-Large-3</td><td>675B</td><td>15</td><td>37.5%</td><td>4</td></tr>
+                    <tr><td>gpt-oss-120b</td><td>120B</td><td>15</td><td>37.5%</td><td>9</td></tr>
+                    <tr><td>Llama-3.3-70B</td><td>70B</td><td>10</td><td>25.0%</td><td>2</td></tr>
+                    <tr><td>gemma-3-12b-it</td><td>12B</td><td>9</td><td>22.5%</td><td>3</td></tr>
+                    <tr><td>Gemma-3-TAIDE-12b</td><td>12B</td><td>8</td><td>20.0%</td><td>3</td></tr>
+                    <tr><td>gpt-oss-20b</td><td>20B</td><td>7</td><td>17.5%</td><td>3</td></tr>
+                    <tr><td>Mistral-Small-3.2</td><td>24B</td><td>6</td><td>15.0%</td><td>4</td></tr>
+                    <tr><td>Nemotron-Super-49B</td><td>49B</td><td>4</td><td>10.0%</td><td>10</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- 系統流程圖 -->
+              <div class="mt-8 rounded-2xl bg-white/60 border border-slate-100 p-4 sm:p-6">
+                <h4 class="font-bold text-brand-ink mb-5">系統流程</h4>
+                <ol class="flow" aria-label="語音逐字稿 AI 校正系統流程">
+                  <li class="flow-node"><p class="step">01</p><p class="font-semibold text-brand-ink text-sm mt-1">音檔輸入</p><p class="text-xs text-slate-500 mt-1">實地導覽錄音</p></li>
+                  <li class="flow-link" aria-hidden="true"></li>
+                  <li class="flow-node"><p class="step">02</p><p class="font-semibold text-brand-ink text-sm mt-1">Breeze-ASR-25</p><p class="text-xs text-slate-500 mt-1">逐字稿初稿</p></li>
+                  <li class="flow-link" aria-hidden="true"></li>
+                  <li class="flow-node"><p class="step">03</p><p class="font-semibold text-brand-ink text-sm mt-1">Prompt 組合器</p><p class="text-xs text-slate-500 mt-1">70+ 關鍵字・9 條規則・維基百科地點資料</p></li>
+                  <li class="flow-link" aria-hidden="true"></li>
+                  <li class="flow-node"><p class="step">04</p><p class="font-semibold text-brand-ink text-sm mt-1">10 個 LLM</p><p class="text-xs text-slate-500 mt-1">算力平台推論 API</p></li>
+                  <li class="flow-link" aria-hidden="true"></li>
+                  <li class="flow-node"><p class="step">05</p><p class="font-semibold text-brand-ink text-sm mt-1">Google Drive</p><p class="text-xs text-slate-500 mt-1">結果存檔</p></li>
+                  <li class="flow-link" aria-hidden="true"></li>
+                  <li class="flow-node"><p class="step">06</p><p class="font-semibold text-brand-ink text-sm mt-1">人工複核</p><p class="text-xs text-slate-500 mt-1">對照 40 處標註</p></li>
+                </ol>
+              </div>
+            </div>
+          </article>
+
+          <!-- ===== 作品三：HealthCheckAI——AI 智能健檢報告系統 ===== -->
+          <article class="reveal glass card-hover rounded-[2rem] p-4 sm:p-6 grid lg:grid-cols-12 gap-6 lg:gap-10 items-center">
+            <!-- TODO: 換圖時，將兩個 placeholder 分別換成
+                 <img src="aihealth.png" alt="HealthCheckAI 系統架構圖" class="w-full h-full object-cover rounded-2xl" />
+                 <img src="healthcheck-report.png" alt="HealthCheckAI 報告解讀畫面" class="w-full h-full object-cover rounded-2xl" /> -->
+            <div class="lg:col-span-5 grid grid-cols-2 gap-3">
+              <img src="aihealth.png" alt="HealthCheckAI 系統架構圖" class="w-full h-full object-cover rounded-2xl" />
+              <img src="healthcheck-report.png" alt="HealthCheckAI 報告解讀畫面" class="w-full h-full object-cover rounded-2xl" />
+            </div>
+            <div class="lg:col-span-7 px-1 sm:px-0 pb-2">
+              <span class="tag">團隊專案｜Microsoft AI &amp; Data 雲端競賽軌道</span>
+              <h3 class="mt-4 text-2xl font-bold leading-snug">HealthCheckAI——AI 智能健檢報告系統</h3>
+              <p class="mt-3 leading-relaxed"> 本系統旨在協助醫師快速生成健檢報告的 AI 智能摘要、自動風險分級，並提供來賓（病患）友善的報告查詢介面，包含多語系翻譯與 Azure 語音播報功能，降低醫療數據的閱讀門檻。</p>
+              <!-- TODO: 填入你在團隊中的實際角色 -->
+              <p class="mt-3 text-sm"><span class="font-semibold text-brand-ink">我的角色：</span>系統架構規劃、後端、文字處理</p>
+              <div class="mt-5 flex flex-wrap gap-2">
+                <span class="tag">Microsoft Foundry</span><span class="tag">Fabric</span><span class="tag">Copilot Studio</span><span class="tag">LLM</span>
+              </div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+  
+    <!-- ===== 聯絡我 ===== -->
+    <section id="contact" class="py-24 sm:py-32 px-4 sm:px-6">
+      <div class="max-w-4xl mx-auto">
+        <div class="reveal glass rounded-[2.5rem] px-6 py-14 sm:px-12 sm:py-20 text-center relative overflow-hidden">
+          <div class="absolute inset-0 pointer-events-none opacity-60" style="background:radial-gradient(60% 60% at 50% 0%, rgba(37,99,235,.10), transparent 70%), radial-gradient(50% 50% at 80% 100%, rgba(124,58,237,.08), transparent 70%)" aria-hidden="true"></div>
+          <div class="relative">
+            <span class="eyebrow justify-center">Contact</span>
+            <h2 class="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">有想用 AI 解決的問題嗎？<br class="hidden sm:block">聊聊吧。</h2>
+            <p class="mt-5 text-base sm:text-lg">直接選一個你方便的時段，我們線上聊 30 分鐘。</p>
+
+            <a href="https://calendar.app.google/fvBJw33fKPCAU9oE9" target="_blank" rel="noopener noreferrer" class="btn btn-xl mt-10">
+              <span class="btn-swap">
+                <span class="label-default">預約線上諮詢 ↗</span>
+                <span class="label-hover"><i class="pulse-dot"></i>Status: Ready to Connect</span>
+              </span>
+            </a>
+
+            <ul class="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-slate-500">
+              <li>
+                <a href="mailto:a0914011371@gmail.com" class="inline-flex items-center gap-2 hover:text-brand-blue transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+                  Gmail
+                </a>
+              </li>
+              <li>
+                <a href="https://www.instagram.com/ugly_doubleugly/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 hover:text-brand-blue transition-colors">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+                  Instagram
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/sunnywang-ctrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 hover:text-brand-blue transition-colors">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2z"/></svg>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== 頁尾 ===== -->
+  <footer class="relative z-10 py-10 px-4 text-center text-sm text-slate-400">
+    <!-- TODO: 換成你的名字 -->
+    © 2026 王語涵｜Built with curiosity &amp; AI
+  </footer>
+
+  <!-- ===== 回到頂部 ===== -->
+  <a href="#hero" id="to-top" class="glass fixed bottom-5 right-5 sm:bottom-8 sm:right-8 z-40 w-12 h-12 rounded-full grid place-items-center text-brand-blue hover:text-brand-mint transition-colors" aria-label="回到頂部">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+  </a>
+
+  <script>
+  (function () {
+    'use strict';
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ===== 打字機效果 ===== */
+    const HEADLINE = '讓 AI 與數據，成為每個人的超能力。'; // TODO: 改主標題請同步修改 h1 的 aria-label
+    const typedEl = document.getElementById('typed');
+    const heroAfter = document.querySelectorAll('.hero-after');
+
+    function revealHeroRest() {
+      heroAfter.forEach((el, i) => setTimeout(() => el.classList.add('show'), reduceMotion ? 0 : i * 160));
+      setTimeout(() => document.querySelectorAll('#hero .counter').forEach(runCounter), reduceMotion ? 0 : 500);
+    }
+
+    if (reduceMotion) {
+      typedEl.textContent = HEADLINE;
+      revealHeroRest();
+    } else {
+      let i = 0;
+      const type = () => {
+        typedEl.textContent = HEADLINE.slice(0, ++i);
+        if (i < HEADLINE.length) {
+          const ch = HEADLINE[i - 1];
+          const delay = /[，。、]/.test(ch) ? 320 : 85 + Math.random() * 70;
+          setTimeout(type, delay);
+        } else {
+          setTimeout(revealHeroRest, 250);
+        }
+      };
+      setTimeout(type, 450);
+    }
+
+    /* ===== 數字滾動 ===== */
+    function runCounter(el) {
+      if (el.dataset.done) return;
+      el.dataset.done = '1';
+      const target = parseFloat(el.dataset.target);
+      const decimals = parseInt(el.dataset.decimals || '0', 10);
+      if (reduceMotion) { el.textContent = target.toFixed(decimals); return; }
+      const duration = 1600;
+      const start = performance.now();
+      const step = (now) => {
+        const p = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = (target * eased).toFixed(decimals);
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+    // 非 Hero 區的數字：捲動到畫面時才開始
+    const counterIO = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { runCounter(e.target); counterIO.unobserve(e.target); } });
+    }, { threshold: 0.6 });
+    document.querySelectorAll('.counter').forEach((el) => { if (!el.closest('#hero')) counterIO.observe(el); });
+
+    /* ===== 進場動畫（stagger） ===== */
+    const revealEls = document.querySelectorAll('.reveal');
+    revealEls.forEach((el) => {
+      const siblings = Array.from(el.parentElement.children).filter((c) => c.classList.contains('reveal'));
+      el.style.setProperty('--d', (siblings.indexOf(el) * 90) + 'ms');
+    });
+    if (reduceMotion) {
+      revealEls.forEach((el) => el.classList.add('in'));
+    } else {
+      const revealIO = new IntersectionObserver((entries) => {
+        entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); revealIO.unobserve(e.target); } });
+      }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+      revealEls.forEach((el) => revealIO.observe(el));
+    }
+
+    /* ===== 導覽列玻璃化 & 回到頂部 ===== */
+    const header = document.getElementById('site-header');
+    const toTop = document.getElementById('to-top');
+    const onScroll = () => {
+      const y = window.scrollY;
+      header.classList.toggle('scrolled', y > 20);
+      toTop.classList.toggle('show', y > window.innerHeight);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    /* ===== 右側圓點導覽：標示目前區塊 ===== */
+    const dotLinks = document.querySelectorAll('.dot-nav a');
+    const sectionIO = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          dotLinks.forEach((a) => {
+            const on = a.dataset.target === e.target.id;
+            a.classList.toggle('active', on);
+            if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+          });
+        }
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    document.querySelectorAll('main section[id]').forEach((s) => sectionIO.observe(s));
+
+    /* ===== Canvas 粒子連線背景 ===== */
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [], rafId = null, W = 0, H = 0, dpr = 1;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth; H = window.innerHeight;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const count = W < 640 ? 26 : W < 1024 ? 48 : 78; // 依螢幕寬度調整粒子數
+      particles = Array.from({ length: count }, () => ({
+        x: Math.random() * W, y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25,
+        r: Math.random() * 1.6 + 0.8
+      }));
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      const maxDist = W < 640 ? 110 : 140;
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(37, 99, 235, 0.35)'; ctx.fill();
+        for (let j = i + 1; j < particles.length; j++) {
+          const q = particles[j];
+          const dx = p.x - q.x, dy = p.y - q.y, d = Math.hypot(dx, dy);
+          if (d < maxDist) {
+            ctx.strokeStyle = 'rgba(99, 102, 241, ' + (0.16 * (1 - d / maxDist)) + ')';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+          }
+        }
+      }
+      rafId = requestAnimationFrame(draw);
+    }
+    function startParticles() { if (!rafId) rafId = requestAnimationFrame(draw); }
+    function stopParticles() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } }
+
+    if (!reduceMotion) {
+      resize(); startParticles();
+      let resizeTimer;
+      window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 200); });
+      // 分頁隱藏時暫停動畫
+      document.addEventListener('visibilitychange', () => { document.hidden ? stopParticles() : startParticles(); });
+    }
+
+    /* ===== Chart.js：10 個 LLM 實測圖表 ===== */
+    // TODO: 改圖表資料請改這裡（命中率以 40 處為分母）
+    const MODELS = [
+      { name: 'Gemma-3-27B',        size: '27B',  hits: 21, hallu: 6 },
+      { name: 'Llama-3.1-405B',     size: '405B', hits: 15, hallu: 2 },
+      { name: 'Mistral-Large-3',    size: '675B', hits: 15, hallu: 4 },
+      { name: 'gpt-oss-120b',       size: '120B', hits: 15, hallu: 9 },
+      { name: 'Llama-3.3-70B',      size: '70B',  hits: 10, hallu: 2 },
+      { name: 'gemma-3-12b-it',     size: '12B',  hits: 9,  hallu: 3 },
+      { name: 'Gemma-3-TAIDE-12b',  size: '12B',  hits: 8,  hallu: 3 },
+      { name: 'gpt-oss-20b',        size: '20B',  hits: 7,  hallu: 3 },
+      { name: 'Mistral-Small-3.2',  size: '24B',  hits: 6,  hallu: 4 },
+      { name: 'Nemotron-Super-49B', size: '49B',  hits: 4,  hallu: 10 }
+    ];
+    const TOTAL_POINTS = 40;
+    let chart = null, mode = 'hits';
+
+    function barColor(context) {
+      const { chart: c } = context;
+      const area = c.chartArea;
+      if (!area) return mode === 'hits' ? '#2563eb' : '#fb7185';
+      const g = c.ctx.createLinearGradient(area.left, 0, area.right, 0);
+      if (mode === 'hits') { g.addColorStop(0, '#60a5fa'); g.addColorStop(0.5, '#2563eb'); g.addColorStop(1, '#7c3aed'); }
+      else { g.addColorStop(0, '#fecdd3'); g.addColorStop(1, '#fb7185'); }
+      return g;
+    }
+
+    function buildChart() {
+      if (chart || typeof Chart === 'undefined') return;
+      const small = window.innerWidth < 640;
+      chart = new Chart(document.getElementById('llm-chart'), {
+        type: 'bar',
+        data: {
+          labels: MODELS.map((m) => m.name),
+          datasets: [{
+            label: '修正命中數',
+            data: MODELS.map((m) => m.hits),
+            backgroundColor: barColor,
+            borderRadius: 6,
+            borderSkipped: false,
+            maxBarThickness: 22
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: reduceMotion ? 0 : 1300, easing: 'easeOutQuart' },
+          layout: { padding: { right: 8 } },
+          scales: {
+            x: {
+              beginAtZero: true,
+              suggestedMax: 24,
+              grid: { color: 'rgba(148, 163, 184, 0.15)' },
+              border: { display: false },
+              ticks: { color: '#64748b', font: { family: 'Inter', size: small ? 10 : 12 }, precision: 0 }
+            },
+            y: {
+              grid: { display: false },
+              border: { display: false },
+              ticks: { color: '#334155', font: { family: 'Inter', size: small ? 10 : 12, weight: '500' } }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(255, 255, 255, 0.96)',
+              titleColor: '#0f172a', bodyColor: '#475569',
+              borderColor: 'rgba(37, 99, 235, 0.2)', borderWidth: 1,
+              padding: 12, cornerRadius: 10, displayColors: false,
+              titleFont: { family: 'Inter', weight: '600' }, bodyFont: { family: 'Inter' },
+              callbacks: {
+                title: (items) => {
+                  const m = MODELS[items[0].dataIndex];
+                  return m.name + '（' + m.size + '）';
+                },
+                label: (item) => {
+                  const m = MODELS[item.dataIndex];
+                  if (mode === 'hits') return '修正命中 ' + m.hits + ' / ' + TOTAL_POINTS + ' 處（' + (m.hits / TOTAL_POINTS * 100).toFixed(1) + '%）';
+                  return '幻覺 ' + m.hallu + ' 次';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function setMode(next) {
+      mode = next;
+      document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === next)));
+      document.getElementById('chart-caption').textContent = next === 'hits'
+        ? '修正命中數（以 40 處人工標註為分母，依命中數排序）'
+        : '幻覺次數（越少越好，排序同左側命中數）';
+      if (!chart) return;
+      const ds = chart.data.datasets[0];
+      ds.label = next === 'hits' ? '修正命中數' : '幻覺次數';
+      ds.data = MODELS.map((m) => (next === 'hits' ? m.hits : m.hallu));
+      chart.update();
+    }
+    document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+    // 進入畫面時才建立圖表（播放生長動畫）
+    const chartWrap = document.getElementById('chart-wrap');
+    const chartIO = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          const tryBuild = () => (typeof Chart === 'undefined' ? setTimeout(tryBuild, 150) : buildChart());
+          tryBuild();
+          chartIO.disconnect();
+        }
+      });
+    }, { threshold: 0.3 });
+    chartIO.observe(chartWrap);
+  })();
+  </script>
+</body>
+</html>
